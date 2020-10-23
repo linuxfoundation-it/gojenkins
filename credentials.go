@@ -26,6 +26,8 @@ var listQuery = map[string]string{
 
 //ClassUsernameCredentials is name if java class which implements credentials that store username-password pair
 const ClassUsernameCredentials = "com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl"
+const ClassStringCredentials = "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"
+const ClassSSHCredentials = "com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey"
 
 type credentialID struct {
 	ID string `json:"id"`
@@ -33,6 +35,10 @@ type credentialID struct {
 
 type credentialIDs struct {
 	Credentials []credentialID `json:"credentials"`
+}
+
+type credentialType struct {
+	XMLName xml.Name
 }
 
 //UsernameCredentials struct representing credential for storing username-password pair
@@ -121,6 +127,23 @@ func (cm CredentialsManager) List(domain string) ([]string, error) {
 	}
 
 	return ids, nil
+}
+
+//GetSingleType returns the XMLName of the credential used to determine the credential type
+func (cm CredentialsManager) GetSingleType(domain string, id string) (string, error) {
+	str := ""
+	err := cm.handleResponse(cm.J.Requester.Get(cm.fillURL(configCredentialURL, domain, id), &str, map[string]string{}))
+	if err != nil {
+		return "", err
+	}
+
+	creds := new(credentialType)
+
+	err = xml.Unmarshal([]byte(str), &creds)
+	if err != nil {
+		return "", err
+	}
+	return creds.XMLName.Local, nil
 }
 
 //GetSingle searches for credential in given domain with given id, if credential is found
